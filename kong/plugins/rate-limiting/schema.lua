@@ -24,7 +24,11 @@ end
 return {
     name = "rate-limiting",
     fields = {
-        {protocols = typedefs.protocols_http}, {
+        {
+            protocols = typedefs.protocols {
+                default = {"http", "https", "tcp", "udp"}
+            }
+        }, {
             config = {
                 type = "record",
                 fields = {

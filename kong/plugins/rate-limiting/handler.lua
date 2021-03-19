@@ -38,10 +38,14 @@ local X_RATELIMIT_REMAINING = {
     year = "X-RateLimit-Remaining-Year"
 }
 
+local TOO_MANY_REQUESTS_COAP = table.concat {
+    string.char(0x60), string.char(0x9d), string.char(0xdd), string.char(0x61)
+}
+
 local RateLimitingHandler = {}
 
 RateLimitingHandler.PRIORITY = 901
-RateLimitingHandler.VERSION = "2.2.1"
+RateLimitingHandler.VERSION = "2.3.0"
 
 local function get_identifier(conf)
     local identifier
@@ -171,6 +175,45 @@ function RateLimitingHandler:access(conf)
         end
 
         if headers then kong.response.set_headers(headers) end
+    end
+
+    local ok, err = timer_at(0, increment, conf, limits, identifier,
+                             current_timestamp, 1)
+    if not ok then kong.log.err("failed to create timer: ", err) end
+end
+
+function RateLimitingHandler:preread(conf)
+    local current_timestamp = time() * 1000
+
+    -- Consumer is identified by ip address or authenticated_credential id
+    local identifier = get_identifier(conf)
+    local fault_tolerant = conf.fault_tolerant
+
+    -- Load current metric for configured period
+    local limits = {
+        second = conf.second,
+        minute = conf.minute,
+        hour = conf.hour,
+        day = conf.day,
+        month = conf.month,
+        year = conf.year
+    }
+
+    local usage, stop, err = get_usage(conf, identifier, current_timestamp,
+                                       limits)
+    if err then
+        if not fault_tolerant then return error(err) end
+
+        kong.log.err("failed to get usage: ", tostring(err))
+    end
+
+    if usage then
+        -- If limit is exceeded, terminate the request
+        if stop then
+            local sock = ngx.req.socket()
+            sock:send(TOO_MANY_REQUESTS_COAP)
+            return ngx.exit(429)
+        end
     end
 
     local ok, err = timer_at(0, increment, conf, limits, identifier,
