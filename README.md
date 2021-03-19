@@ -1,16 +1,27 @@
-[![Build Status][badge-travis-image]][badge-travis-url]
+Kong rate limiting
+==================
 
-Kong plugin template
-====================
+General documentation:
+https://docs.konghq.com/hub/kong-inc/rate-limiting/
 
-This repository contains a very simple Kong plugin template to get you
-up and running quickly for developing your own plugins.
+Nginx socket API:
+https://www.nginx.com/resources/wiki/modules/lua/#ngx-req-socket
 
-This template was designed to work with the
-[`kong-pongo`](https://github.com/Kong/kong-pongo) and
-[`kong-vagrant`](https://github.com/Kong/kong-vagrant) development environments.
+Kong plugin API:
+https://docs.konghq.com/gateway-oss/2.3.x/pdk/kong.client/
 
-Please check out those repos `README` files for usage instructions.
+Kong plugin template:
+https://github.com/Kong/kong-plugin
 
-[badge-travis-url]: https://travis-ci.org/Kong/kong-plugin/branches
-[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin.svg?branch=master
+
+
+Installation:
+```
+cp -r rate-limiting /usr/local/share/lua/5.1/kong/plugins/
+```
+
+
+Example usage:
+```
+http post localhost:8001/plugins name:='"rate-limiting"' protocols:='["udp"]' config:='{"limit_by":"ip", "minute":5, "policy":"local"}'
+```
